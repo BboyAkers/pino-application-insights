@@ -4,6 +4,8 @@ import { Writable } from 'pino-multi-stream';
 interface Item {
   level: number;
   msg: string;
+  stack: string;
+  type: string;
 }
 
 interface Telemetry {
@@ -15,40 +17,38 @@ interface Telemetry {
 export class Client {
   insights: any;
 
-  constructor(options: object = {}) {
+  constructor() {
     this.insights = defaultClient
   }
 
+  getLogException (item: Item) {
+    const {level, type, msg, stack } = item;
+    
+    if (level !== 50 || type !== 'Error')
+      return;
+
+    const err = new Error(msg)
+    err.stack = stack || ''
+    return err
+  }
+
   getLogSeverity (level: number) {
+    const { Verbose, Warning, Critical, Information } = Contracts.SeverityLevel;
+
     switch(level) {
       case 10 || 20:
-        return Contracts.SeverityLevel.Verbose;
+        return Verbose;
       case 40:
-        return Contracts.SeverityLevel.Warning;
+        return Warning;
       case 50:
         return Contracts.SeverityLevel.Error;
       case 60:
-        return Contracts.SeverityLevel.Critical;
+        return Critical;
       default:
-        return Contracts.SeverityLevel.Information; // 30
+        return Information; // 30
     }
   }
 
-  getLogSeverityName (severity: number) {
-    switch(severity) {
-      case Contracts.SeverityLevel.Verbose:
-        return 'Verbose';
-      case Contracts.SeverityLevel.Warning:
-        return 'Warning';
-      case Contracts.SeverityLevel.Error:
-        return 'Error';
-      case Contracts.SeverityLevel.Critical:
-        return 'Critical';
-      default:
-        return 'Information'
-    }
-  }
-  
   getLogMessage (item: Item) {
     if (item.msg) { return item.msg }
     const severity = this.getLogSeverity(item.level)
@@ -56,9 +56,26 @@ export class Client {
   }
 
   getLogProperties (item: Item) {
-    const props = Object.assign({}, item)
+    const props = (<any>Object).assign({}, item)
     delete props.msg
     return props
+  }
+
+  getLogSeverityName (severity: number) {
+    const { Verbose, Warning, Critical } = Contracts.SeverityLevel;
+
+    switch(severity) {
+      case Verbose:
+        return 'Verbose';
+      case Warning:
+        return 'Warning';
+      case Contracts.SeverityLevel.Error:
+        return 'Error';
+      case Critical:
+        return 'Critical';
+      default:
+        return 'Information'
+    }
   }
 
   insertTrace (item: Item) {
@@ -70,6 +87,7 @@ export class Client {
     this.insights.trackTrace(telemetry)
   }
 
+  //TODO: Can be improved bye using async await
   insertStream () {
     const writeStream = new Writable({ objectMode: true, highWaterMark: 1 })
     writeStream._write = function (chunk, encoding, callback) {

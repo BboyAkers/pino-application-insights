@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/BboyAkers/pino-application-insights#readme",
   "devDependencies": {
+    "@types/node": "^14.11.2",
     "@typescript-eslint/eslint-plugin": "^4.2.0",
     "@typescript-eslint/parser": "^4.2.0",
     "applicationinsights": "^1.8.7",
